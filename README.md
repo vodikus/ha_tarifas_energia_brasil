@@ -1,4 +1,4 @@
-# Tarifas Energia Brasil - Integração para Home Assistant
+# Tarifas de Energia Brasil - Integração para Home Assistant
 
 Esta integração permite consultar e monitorar as tarifas de energia elétrica vigentes no Brasil, incluindo bandeiras tarifárias, diretamente no Home Assistant. Os dados são obtidos da ANEEL e atualizados automaticamente.
 
@@ -13,11 +13,11 @@ Esta integração permite consultar e monitorar as tarifas de energia elétrica 
 ## Instalação
 
 ### Via HACS
-1. Abra o HACS em seu Home Assistant.
-2. Clique nos três pontos no canto superior direito e selecione *Custom repositories*.
-4. Adicione a URL do repositório: https://github.com/vodikus/ha_tarifas_energia_brasil.
-5. Busque por "*Tarifas Energia Brasil*" e instale a integração.
-6. Reinicie o Home Assistant.
+1. Abra o HACS em seu Home Assistant
+2. Clique nos três pontos no canto superior direito e selecione *Custom repositories*
+4. Selecione o tipo *Integration* no campo *Type* e adicione a URL do repositório: https://github.com/vodikus/ha_tarifas_energia_brasil 
+5. Busque por "*Tarifas de Energia Brasil*" e instale a integração
+6. Reinicie o Home Assistant
 
 ### Instalação Manual
 1. Faça o download do repositório como arquivo ZIP e faça a extração em um diretório local.
@@ -54,5 +54,4 @@ Este projeto está licenciado sob a [GNU General Public License v3.0 (GPL-3.0)](
 Você pode usar, modificar e distribuir este software, desde que qualquer trabalho derivado também seja distribuído sob a mesma licença
 
 ## Apoie o Projeto
-Se você achou este projeto útil e gostaria de apoiá-lo, 
-Buy me a coffee
+Se você achou este projeto útil e gostaria de apoiá-lo, pague me um café.

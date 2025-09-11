@@ -1,0 +1,11 @@
+{
+  "domain": "tarifas_energia_brasil",
+  "name": "Tarifas de Energia Brasil",
+  "documentation": "https://github.com/vodikus/ha_tarifas_energia_brasil",
+  "issue_tracker": "https://github.com/vodikus/ha_tarifas_energia_brasil/issues",
+  "codeowners": ["@vodikus"],
+  "requirements": ["aiohttp"],
+  "version": "1.0.0",
+  "config_flow": true,
+  "iot_class": "cloud_polling"
+}

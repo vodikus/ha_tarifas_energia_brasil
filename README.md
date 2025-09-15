@@ -10,6 +10,24 @@ Esta integração permite consultar e monitorar as tarifas de energia elétrica 
 - Armazenamento local dos dados para histórico.
 - Configuração simples via interface do Home Assistant.
 
+## Screenshots
+
+### Adicionando a Integração
+![Adicionar Integração](/docs/images/001-Adicionar_Integracao.png "Adicionar Integração")
+
+### Tela de Configuração: Selecionando a Concessionária
+![Adicionar Integração](/docs/images/002-Selecionar_Concessionaria.png "Adicionar Integração")
+
+### Tela da Integração: Lista de Serviços
+![Adicionar Integração](/docs/images/003-Lista_de_Servicos.png "Adicionar Integração")
+
+
+### Tela do Serviço: Entidades
+![Adicionar Integração](/docs/images/004-Dispositivo.png "Adicionar Integração")
+
+### Painel Energia: Vinculando entidade da tarifa ao dispositivo
+![Adicionar Integração](/docs/images/005-Vincular_Tarifa_Energia.png "Adicionar Integração")
+
 ## Instalação
 
 ### Via HACS
@@ -54,4 +72,13 @@ Este projeto está licenciado sob a [GNU General Public License v3.0 (GPL-3.0)](
 Você pode usar, modificar e distribuir este software, desde que qualquer trabalho derivado também seja distribuído sob a mesma licença
 
 ## Apoie o Projeto
-Se você achou este projeto útil e gostaria de apoiá-lo, pague me um café.
+Se você achou este ou outros projetos úteis e gostaria de apoiá-los, há várias maneiras.
+
+
+[!["Me Pagua um Café"](/docs/images/me-paga-um-cafe.png "Me Paga um Café")](https://mepagaumcafe.com.br/vodikus/)
+
+
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/vodikus)
+
+
+

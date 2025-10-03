@@ -6,7 +6,7 @@
   "repository": "https://github.com/vodikus/ha_tarifas_energia_brasil",
   "render_readme": true,
   "config_flow": true,
-  "icon": "https://raw.githubusercontent.com/vodikus/ha_tarifas_energia_brasil/main/tarifas_energia_brasil/logo.png",
+  "icon": "https://raw.githubusercontent.com/vodikus/ha_tarifas_energia_brasil/main/custom_components/tarifas_energia_brasil/logo.png",
   "iot_class": "cloud_polling",
   "zip_release": false
 }

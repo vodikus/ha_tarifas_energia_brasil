@@ -1,0 +1,45 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: '🚀 Novas Funcionalidades'
+    labels:
+      - 'feature'
+      - 'enhancement'
+  - title: '🐛 Correções de Bugs'
+    labels:
+      - 'fix'
+      - 'bug'
+  - title: '🔧 Manutenção e Outras Melhorias'
+    labels:
+      - 'chore'
+      - 'documentation'
+      - 'ci'
+
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+template: |
+  ## O que mudou nesta versão?
+
+  $CHANGES
+
+  Agradecemos a todos os contribuidores! 🎉
+```
+
+### Como Funciona e Como Usar
+
+1.  **Faça o commit desses dois novos arquivos** no seu repositório.
+2.  **Trabalhe com Pull Requests (PRs):** Para que o changelog seja gerado corretamente, o ideal é que cada mudança seja feita através de um Pull Request.
+3.  **Use Labels nos PRs:** Antes de fazer o *merge* de um PR, adicione uma etiqueta (label) a ele. Por exemplo:
+    * Se for uma nova funcionalidade, use a label `feature`.
+    * Se for uma correção de bug, use a label `bug`.
+    * Se for uma melhoria na documentação, use a label `documentation`.
+    (Você pode criar essas labels na aba "Issues" -> "Labels" do seu repositório).
+4.  **Para Lançar uma Nova Versão:**
+    * Quando você decidir que está pronto para uma nova versão, basta criar e empurrar uma nova tag para o GitHub. Por exemplo, se a sua última versão foi a `v1.0.0`, você faria:
+        ```bash
+        # Cria a tag localmente
+        git tag v1.1.0
+
+        # Empurra a tag para o repositório remoto
+        git push origin v1.1.0
+        

@@ -2,7 +2,7 @@
 import logging
 import json
 import aiohttp
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from .database import DatabaseManager
 
@@ -28,95 +28,89 @@ class TarifasEnergiaAPI:
         self._db = db_manager
 
     async def _async_get_valores_bandeiras(self, competencia: date) -> dict[str, float] | None:
-        """Busca os valores de todas as bandeiras tarifárias para um determinado mês."""
-        primeiro_dia_mes = competencia.strftime("%Y-%m-01")
+        """Busca os valores de todas as bandeiras tarifárias, com fallback para o mês anterior."""
+        datas_para_tentar = [
+            competencia,
+            (competencia.replace(day=1) - timedelta(days=1))  # Mês anterior
+        ]
         
-        params = {
-            "resource_id": RESOURCE_ID_BANDEIRAS,
-            "filters": json.dumps({"DatCompetencia": primeiro_dia_mes}),
-            "limit": 1
-        }
+        for data_tentativa in datas_para_tentar:
+            primeiro_dia_mes = data_tentativa.strftime("%Y-%m-01")
+            params = {
+                "resource_id": RESOURCE_ID_BANDEIRAS,
+                "filters": json.dumps({"DatCompetencia": primeiro_dia_mes}),
+                "limit": 1
+            }
+            _LOGGER.info(f"Buscando valores das bandeiras tarifárias para {primeiro_dia_mes}")
+
+            try:
+                async with self._session.get(URL_SEARCH_API, params=params) as response:
+                    response.raise_for_status()
+                    data = await response.json()
+
+                    if data.get("success"):
+                        records = data.get("result", {}).get("records", [])
+                        if records:
+                            record = records[0]
+                            valores = {
+                                "Bandeira Verde": 0.0,
+                                "Bandeira Amarela": float(record.get("VlrBandeiraAmarela", 0.0)),
+                                "Bandeira Vermelha Patamar 1": float(record.get("VlrBandeiraVermelhaPatamar1", 0.0)),
+                                "Bandeira Vermelha Patamar 2": float(record.get("VlrBandeiraVermelhaPatamar2", 0.0)),
+                            }
+                            _LOGGER.info(f"Valores das bandeiras encontrados para {primeiro_dia_mes}: {valores}")
+                            return valores
+            
+            except aiohttp.ClientError as err:
+                _LOGGER.warning(f"Erro ao acessar API de bandeiras para {primeiro_dia_mes}: {err}. Tentando próxima data.")
+            except (ValueError, TypeError) as err:
+                _LOGGER.warning(f"Erro ao processar dados das bandeiras para {primeiro_dia_mes}: {err}. Tentando próxima data.")
         
-        _LOGGER.info(f"Buscando valores das bandeiras tarifárias para {primeiro_dia_mes}")
+        _LOGGER.error("Não foi possível obter os valores das bandeiras para o mês atual ou anterior.")
+        return None
 
-        try:
-            async with self._session.get(URL_SEARCH_API, params=params) as response:
-                response.raise_for_status()
-                data = await response.json()
-
-                if data.get("success"):
-                    records = data.get("result", {}).get("records", [])
-                    if records:
-                        record = records[0]
-                        valores = {
-                            "Bandeira Verde": 0.0,
-                            "Bandeira Amarela": float(record.get("VlrBandeiraAmarela", 0.0)),
-                            "Bandeira Vermelha Patamar 1": float(record.get("VlrBandeiraVermelhaPatamar1", 0.0)),
-                            "Bandeira Vermelha Patamar 2": float(record.get("VlrBandeiraVermelhaPatamar2", 0.0)),
-                        }
-                        _LOGGER.info(f"Valores das bandeiras encontrados: {valores}")
-                        return valores
-                    
-                    _LOGGER.warning(f"Nenhum valor de bandeira encontrado para {primeiro_dia_mes}.")
-                    return None
-                
-                _LOGGER.error(f"A API de bandeiras da ANEEL retornou um erro: {data.get('error')}")
-                return None
-
-        except aiohttp.ClientError as err:
-            _LOGGER.error(f"Erro ao acessar a API de bandeiras tarifárias: {err}")
-            return None
-        except (ValueError, TypeError) as err:
-            _LOGGER.error(f"Erro ao processar os valores das bandeiras: {err}")
-            return None
 
     async def async_get_bandeira_vigente(self, competencia: date) -> str | None:
-        """Busca a bandeira tarifária vigente para um determinado mês usando SQL."""
-        mes_ano = competencia.strftime("%Y-%m")
-        sql_query = f'SELECT "NomBandeiraAcionada" from "{RESOURCE_ID_BANDEIRAS}" WHERE "DatCompetencia" LIKE \'{mes_ano}%\' LIMIT 1'
-        
-        params = {"sql": sql_query}
-        
-        _LOGGER.info(f"Buscando bandeira tarifária para {mes_ano} via SQL.")
-        _LOGGER.debug(f"Executando SQL na API da ANEEL: {sql_query}")
+        """Busca a bandeira tarifária vigente, com fallback para o mês anterior."""
+        datas_para_tentar = [
+            competencia,
+            (competencia.replace(day=1) - timedelta(days=1))  # Mês anterior
+        ]
 
-        try:
-            async with self._session.get(URL_SQL_API, params=params) as response:
-                response.raise_for_status()
-                data = await response.json()
+        for data_tentativa in datas_para_tentar:
+            mes_ano = data_tentativa.strftime("%Y-%m")
+            sql_query = f'SELECT "NomBandeiraAcionada" from "{RESOURCE_ID_BANDEIRAS}" WHERE "DatCompetencia" LIKE \'{mes_ano}%\' LIMIT 1'
+            params = {"sql": sql_query}
+            
+            _LOGGER.info(f"Buscando bandeira tarifária para {mes_ano} via SQL.")
 
-                if data.get("success"):
-                    records = data.get("result", {}).get("records", [])
-                    if records:
-                        bandeira_acionada = records[0].get("NomBandeiraAcionada")
-                        _LOGGER.info(f"Bandeira acionada encontrada para {mes_ano}: {bandeira_acionada}")
+            try:
+                async with self._session.get(URL_SQL_API, params=params) as response:
+                    response.raise_for_status()
+                    data = await response.json()
 
-                        # Mapeamento dos valores da API para os nomes completos usados no sistema
-                        mapa_bandeiras = {
-                            "Verde": "Bandeira Verde",
-                            "Amarela": "Bandeira Amarela",
-                            "Vermelha P1": "Bandeira Vermelha Patamar 1",
-                            "Vermelha P2": "Bandeira Vermelha Patamar 2",
-                        }
-                        
-                        bandeira_mapeada = mapa_bandeiras.get(bandeira_acionada, bandeira_acionada)
-                        if bandeira_acionada not in mapa_bandeiras:
-                             _LOGGER.warning(f"Bandeira '{bandeira_acionada}' não possui mapeamento. Usando valor original.")
-                        
-                        return bandeira_mapeada
-                    
-                    _LOGGER.warning(f"Nenhuma bandeira tarifária encontrada para {mes_ano}.")
-                    return None
-                
-                _LOGGER.error(f"A API da ANEEL para bandeiras (SQL) retornou um erro: {data.get('error')}")
-                return None
+                    if data.get("success"):
+                        records = data.get("result", {}).get("records", [])
+                        if records:
+                            bandeira_acionada = records[0].get("NomBandeiraAcionada")
+                            _LOGGER.info(f"Bandeira acionada encontrada para {mes_ano}: {bandeira_acionada}")
 
-        except aiohttp.ClientError as err:
-            _LOGGER.error(f"Erro ao acessar a API SQL de bandeiras tarifárias: {err}")
-            return None
-        except Exception as err:
-            _LOGGER.error(f"Erro inesperado ao processar a bandeira tarifária via SQL: {err}")
-            return None
+                            mapa_bandeiras = {
+                                "Verde": "Bandeira Verde",
+                                "Amarela": "Bandeira Amarela",
+                                "Vermelha P1": "Bandeira Vermelha Patamar 1",
+                                "Vermelha P2": "Bandeira Vermelha Patamar 2",
+                            }
+                            return mapa_bandeiras.get(bandeira_acionada, bandeira_acionada)
+            
+            except aiohttp.ClientError as err:
+                _LOGGER.warning(f"Erro ao acessar API SQL de bandeiras para {mes_ano}: {err}. Tentando próxima data.")
+            except Exception as err:
+                _LOGGER.warning(f"Erro inesperado ao processar bandeira para {mes_ano}: {err}. Tentando próxima data.")
+
+        _LOGGER.error("Não foi possível obter a bandeira vigente para o mês atual ou anterior.")
+        return None
+
 
     async def async_fetch_concessionarias(self) -> bool:
         """
@@ -240,4 +234,3 @@ class TarifasEnergiaAPI:
         _LOGGER.info(f"Tarifas finais para {concessionaria_nome} atualizadas com sucesso.")
 
         return await self._db.async_get_tarifas(concessionaria_nome)
-

@@ -169,9 +169,18 @@ class TarifasEnergiaAPI:
 
         tarifa_base = None
         
-        # Monta a query SQL com os filtros especificados
+        # Monta a query SQL com os filtros especificados e busca a data mais recente
         sql_query = (
-            f'SELECT "VlrTUSD", "VlrTE" FROM "{RESOURCE_ID_TARIFAS}" '
+            f'WITH ultima_data AS ('
+            f'  SELECT MAX("DatFimVigencia") as data_max '
+            f'  FROM "{RESOURCE_ID_TARIFAS}" '
+            f'  WHERE "SigAgente" = \'{concessionaria_nome}\' '
+            f'  AND "DscBaseTarifaria" = \'Tarifa de Aplicação\' '
+            f'  AND "DscSubGrupo" = \'B1\' '
+            f'  AND "DscClasse" = \'Residencial\' '
+            f') '
+            f'SELECT "VlrTUSD", "VlrTE" '
+            f'FROM "{RESOURCE_ID_TARIFAS}" '
             f'WHERE "SigAgente" = \'{concessionaria_nome}\' '
             f'AND "DscBaseTarifaria" = \'Tarifa de Aplicação\' '
             f'AND "DscSubGrupo" = \'B1\' '
@@ -179,9 +188,9 @@ class TarifasEnergiaAPI:
             f'AND "DscModalidadeTarifaria" = \'Convencional\' '
             f'AND "DscSubClasse" = \'Residencial\' '
             f'AND "DscDetalhe" = \'Não se aplica\' '
-            f'AND "DatFimVigencia" > \'{hoje.strftime("%Y-%m-%d")}\' '
-            'LIMIT 1'
-        )
+            f'AND "DatFimVigencia" = (SELECT data_max FROM ultima_data) '
+            f'LIMIT 1'
+        )        
         
         params = {"sql": sql_query}
         

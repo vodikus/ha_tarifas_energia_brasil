@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 
 from .database import DatabaseManager
 
+
 _LOGGER = logging.getLogger(__name__)
 
 # URL base da API da ANEEL para consultas SQL

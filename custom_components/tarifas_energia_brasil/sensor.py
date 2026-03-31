@@ -31,6 +31,7 @@ async def async_setup_entry(
         TarifaVigenteSensor(coordinator, entry),
         BandeiraVigenteSensor(coordinator, entry),
         ApiStatusSensor(coordinator, entry),
+        UltimaAtualizacaoSensor(coordinator, entry),
     ]
 
     async_add_entities(entities)
@@ -157,5 +158,24 @@ class BandeiraVigenteSensor(TarifasEnergiaBaseSensor):
         """Retorna o nome da bandeira tarifária vigente."""
         if self.coordinator.data:
             return self.coordinator.data.get("bandeira_vigente")
+        return None
+
+
+class UltimaAtualizacaoSensor(TarifasEnergiaBaseSensor):
+    """Sensor que exibe o timestamp da última atualização salva."""
+
+    _attr_name = "Última Atualização"
+    _attr_icon = "mdi:calendar-clock"
+
+    def __init__(self, coordinator: TarifasEnergiaCoordinator, entry: ConfigEntry):
+        """Inicializa o sensor da última atualização."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{self.entry.entry_id}_ultima_atualizacao"
+
+    @property
+    def native_value(self) -> str | None:
+        """Retorna o timestamp vindo de last_data.json."""
+        if self.coordinator.data:
+            return self.coordinator.data.get("timestamp")
         return None
 

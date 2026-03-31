@@ -65,6 +65,7 @@ class TarifasEnergiaCoordinator(DataUpdateCoordinator):
                 "tarifas": tarifas,
                 "bandeira_vigente": bandeira_vigente,
                 "api_status": "online",
+                "timestamp": (await load_last_data() or {}).get("timestamp"),
             }
 
         except Exception as err:
@@ -77,6 +78,7 @@ class TarifasEnergiaCoordinator(DataUpdateCoordinator):
                     "bandeira_vigente": last_data.get("bandeira_vigente"),
                     "tarifa_vigente": last_data.get("tarifa_vigente"),
                     "api_status": last_data.get("api_status", "offline"),
+                    "timestamp": last_data.get("timestamp"),
                 }
             raise UpdateFailed(f"Erro ao buscar dados: {err}")
 

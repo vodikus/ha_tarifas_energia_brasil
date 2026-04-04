@@ -35,13 +35,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api_client = TarifasEnergiaAPI(hass, session, db_manager)
     coordinator = TarifasEnergiaCoordinator(hass, api_client, concessionaria_nome)
 
-    # 4. Realizar a primeira busca de dados ao iniciar
+    # 4. Pre-load do CSV de bandeiras antes da primeira consulta à API
+    await api_client.async_preload_latest_bandeira_csv()
+
+    # 5. Realizar a primeira busca de dados ao iniciar
     await coordinator.async_config_entry_first_refresh()
 
-    # 5. Armazenar o coordenador para que as plataformas (sensor) possam usá-lo
+    # 6. Armazenar o coordenador para que as plataformas (sensor) possam usá-lo
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    # 6. Encaminhar a configuração para as plataformas definidas
+    # 7. Encaminhar a configuração para as plataformas definidas
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Retorna True se tudo ocorreu bem

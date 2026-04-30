@@ -63,4 +63,6 @@ jobs:
             ha-venv-${{ runner.os }}-py314-ha${{ steps.ha_version.outputs.HA_VERSION }}-
 
       - name: Install dependencies
-        run: script/setup/bootstrap
+        run: |
+        chmod -R +x script/*
+        script/setup/bootstrap

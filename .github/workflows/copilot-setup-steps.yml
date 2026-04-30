@@ -64,5 +64,5 @@ jobs:
 
       - name: Install dependencies
         run: |
-        chmod -R +x script/*
-        script/setup/bootstrap
+          chmod -R +x script/*
+          script/setup/bootstrap

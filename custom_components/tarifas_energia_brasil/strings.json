@@ -1,0 +1,96 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configuração Inicial",
+        "description": "Selecione a concessionária de energia.",
+        "data": {
+          "concessionaria": "Concessionária"
+        }
+      },
+      "options": {
+        "title": "Configurações Avançadas",
+        "description": "Ajuste os parâmetros avançados, Geração (SCEE) e Impostos.",
+        "data": {
+          "modalidade_tarifaria": "Modalidade Tarifária",
+          "tipo_fornecimento": "Tipo de Fornecimento",
+          "entidade_consumo": "Entidade de Consumo Total (kWh)",
+          "entidade_geracao": "Entidade de Geração Total (kWh)",
+          "entidade_injecao": "Entidade de Injeção Total (kWh)",
+          "modo_impostos": "Modo de Extração de Impostos",
+          "ciclo_quebra": "Quebra de Cálculo",
+          "dia_leitura": "Dia da Leitura/Reset Mensal"
+        }
+      },
+      "manual_taxes": {
+        "title": "Configuração de Impostos Manuais",
+        "description": "Insira as alíquotas manualmente (em porcentagem).",
+        "data": {
+          "aliquota_pis": "Alíquota PIS (%)",
+          "aliquota_cofins": "Alíquota COFINS (%)",
+          "aliquota_icms": "Alíquota ICMS (%)"
+        }
+      },
+      "tarifa_branca": {
+        "title": "Configuração da Tarifa Branca",
+        "description": "Defina os horários dos períodos ponta e intermediário e os feriados extras.",
+        "data": {
+          "tb_ponta_ini": "Início do Horário de Ponta",
+          "tb_ponta_fim": "Fim do Horário de Ponta",
+          "tb_inter1_ini": "Início Intermediário 1",
+          "tb_inter1_fim": "Fim Intermediário 1",
+          "tb_inter2_ini": "Início Intermediário 2",
+          "tb_inter2_fim": "Fim Intermediário 2",
+          "tb_feriados_extras": "Feriados Extras (um por linha, formato YYYY-MM-DD)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Falha ao conectar à ANEEL.",
+      "no_concessionarias": "Nenhuma concessionária encontrada."
+    },
+    "abort": {
+      "already_configured": "Dispositivo já está configurado"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configurações Avançadas",
+        "description": "Ajuste os parâmetros avançados, Geração (SCEE) e Impostos.",
+        "data": {
+          "modalidade_tarifaria": "Modalidade Tarifária",
+          "tipo_fornecimento": "Tipo de Fornecimento",
+          "entidade_consumo": "Entidade de Consumo Total (kWh)",
+          "entidade_geracao": "Entidade de Geração Total (kWh)",
+          "entidade_injecao": "Entidade de Injeção Total (kWh)",
+          "modo_impostos": "Modo de Extração de Impostos",
+          "ciclo_quebra": "Quebra de Cálculo",
+          "dia_leitura": "Dia da Leitura/Reset Mensal"
+        }
+      },
+      "manual_taxes": {
+        "title": "Configuração de Impostos Manuais",
+        "description": "Insira as alíquotas manualmente (em porcentagem).",
+        "data": {
+          "aliquota_pis": "Alíquota PIS (%)",
+          "aliquota_cofins": "Alíquota COFINS (%)",
+          "aliquota_icms": "Alíquota ICMS (%)"
+        }
+      },
+      "tarifa_branca": {
+        "title": "Configuração da Tarifa Branca",
+        "description": "Defina os horários dos períodos ponta e intermediário e os feriados extras.",
+        "data": {
+          "tb_ponta_ini": "Início do Horário de Ponta",
+          "tb_ponta_fim": "Fim do Horário de Ponta",
+          "tb_inter1_ini": "Início Intermediário 1",
+          "tb_inter1_fim": "Fim Intermediário 1",
+          "tb_inter2_ini": "Início Intermediário 2",
+          "tb_inter2_fim": "Fim Intermediário 2",
+          "tb_feriados_extras": "Feriados Extras (um por linha, formato YYYY-MM-DD)"
+        }
+      }
+    }
+  }
+}

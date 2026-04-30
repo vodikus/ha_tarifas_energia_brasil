@@ -1,0 +1,8 @@
+# Generated/runtime files (ignored by .gitignore but explicit here)
+config/
+!config/configuration.yaml
+custom_components/
+!custom_components/tarifas_energia_brasil/
+
+# Ignore-style files (no recognized extension — Prettier would misparse them)
+*ignore

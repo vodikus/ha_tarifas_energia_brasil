@@ -1,0 +1,217 @@
+{
+  "name": "HA ${localWorkspaceFolderBasename} Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/base:debian",
+  // Lifecycle hooks — execution order on first creation:
+  //   onCreateCommand → updateContentCommand → postCreateCommand → postStartCommand → postAttachCommand
+  // On subsequent starts (container stopped/restarted):
+  //   postStartCommand → postAttachCommand
+  // On client re-attach (container already running):
+  //   postAttachCommand only
+  //
+  // Each hook script sources .devcontainer/hooks/<name>.{pre,post}.sh when present.
+  //
+  // Runs once at container creation — fixes Docker volume mount point ownership.
+  "onCreateCommand": "bash .devcontainer/on-create.sh",
+  // Runs at creation and on Codespaces pre-build refreshes — use for content-dependent setup.
+  "updateContentCommand": "bash .devcontainer/update-content.sh",
+  // Runs on every container start (not on every attach) — use for per-start actions.
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  // Runs on every container creation — installs all dependencies.
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  // Runs on every client attach — detects fresh blueprints and triggers initialization.
+  "postAttachCommand": "bash .devcontainer/post-attach.sh",
+  "containerEnv": {
+    // Python runtime variables — must be set for ALL Python processes, including those spawned
+    // by VS Code extensions (Pylance, test runner, Ruff) that never go through our shell scripts.
+    //
+    // NOTE: .devcontainer/.env is NOT available here. containerEnv is applied by the Docker runtime
+    // at container start, while .env is sourced by lifecycle hook scripts (onCreateCommand etc.).
+    // Variables that only need to reach setup scripts belong in .devcontainer/.env, not here.
+    // Variables from .env also cannot influence DevContainer features — features are installed
+    // during image build, before the container starts and before any lifecycle hook runs.
+    //
+    // Enable asyncio debug mode for easier debugging of async code
+    "PYTHONASYNCIODEBUG": "1",
+    // Ensure Python output is sent straight to terminal (e.g. for logging)
+    "PYTHONUNBUFFERED": "1",
+    // Prevent Python from writing .pyc files to disk
+    "PYTHONDONTWRITEBYTECODE": "1",
+    // Point uv to the named volume cache mount (avoids Docker creating ~/.cache as root).
+    // Must be set here so it reaches every process (extensions, uv, hass) from container start.
+    "UV_CACHE_DIR": "/home/vscode/uv-cache"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.14"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainer-community/devcontainer-features/yq:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers-extra/features/apt-packages:1": {
+      "packages": [
+        "autoconf",
+        "automake",
+        "bat",
+        "eza",
+        "fd-find",
+        "ffmpeg",
+        "fzf",
+        "git-delta",
+        "httpie",
+        "hyperfine",
+        "ipython3",
+        "jo",
+        "jq",
+        "libpcap-dev",
+        "libssl-dev",
+        "libtool",
+        "libturbojpeg0",
+        "miller",
+        "moreutils",
+        "pipx",
+        "ripgrep",
+        "shellcheck",
+        "shfmt",
+        "sqlite3",
+        "tree",
+        "yamllint"
+      ]
+    }
+  },
+  "forwardPorts": [8123],
+  "portsAttributes": {
+    "8123": {
+      "label": "Home Assistant",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "davidanson.vscode-markdownlint",
+        "EditorConfig.EditorConfig",
+        "esbenp.prettier-vscode",
+        "GitHub.copilot",
+        "github.vscode-pull-request-github",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-vscode-remote.remote-containers",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml"
+      ],
+      // Please keep this file in sync with settings in .vscode/settings.default.jsonc
+      "settings": {
+        "chat.promptFiles": true,
+        "editor.tabSize": 4,
+        "editor.formatOnPaste": false,
+        "editor.formatOnSave": true,
+        "editor.formatOnType": false,
+        "files.eol": "\n",
+        "files.trimTrailingWhitespace": true,
+        "files.associations": {
+          "**/translations/*.json": "jsontranslation",
+          "**/*ignore": "ignore"
+        },
+        "markdown.validate.enabled": false,
+        "markdown.validate.fileLinks.enabled": "ignore",
+        "markdown.validate.fragmentLinks.enabled": "ignore",
+        "python.analysis.autoImportCompletions": true,
+        "python.analysis.diagnosticMode": "workspace",
+        "python.defaultInterpreterPath": "/home/vscode/ha-venv/bin/python",
+        "python.linting.pylintEnabled": false,
+        "python.terminal.activateEnvironment": true,
+        "python.terminal.activateEnvInCurrentTerminal": true,
+        // .devcontainer/.env uses Bash syntax (sourced by setup scripts) — not a Python dotenv file.
+        // Disable VS Code's env file injection to avoid parse errors and unexpected variable leakage.
+        "python.terminal.useEnvFile": false,
+        "python.testing.pytestArgs": ["--no-cov"],
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/usr/bin/zsh"
+          }
+        },
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "yaml.customTags": [
+          "!secret scalar",
+          "!include scalar",
+          "!include_dir_list scalar",
+          "!include_dir_merge_list scalar",
+          "!include_dir_named scalar",
+          "!include_dir_merge_named scalar",
+          "!input scalar"
+        ],
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+          }
+        },
+        "[yaml]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[jsontranslation]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": false
+        },
+        "github.copilot.chat.commitMessageGeneration.instructions": [
+          { "file": ".github/instructions/blueprint.commit-message.instructions.md" }
+        ],
+        "json.schemas": [
+          {
+            "fileMatch": ["custom_components/*/manifest.json"],
+            "url": "${containerWorkspaceFolder}/schemas/json/manifest_schema.json"
+          },
+          {
+            "fileMatch": ["custom_components/*/translations/*.json"],
+            "url": "${containerWorkspaceFolder}/schemas/json/translation_schema.json"
+          },
+          {
+            "fileMatch": ["hacs.json"],
+            "url": "${containerWorkspaceFolder}/schemas/json/hacs_schema.json"
+          },
+          {
+            "fileMatch": ["custom_components/*/icons.json"],
+            "url": "${containerWorkspaceFolder}/schemas/json/icons_schema.json"
+          }
+        ]
+      }
+    }
+  },
+  "mounts": [
+    // Named volume for HA Python venv: survives container rebuilds (but not "Rebuild and Clean Volumes").
+    // bootstrap already skips venv creation if the directory exists; uv pip install is fast for already-installed packages.
+    // Run "Dev Containers: Rebuild and Clean Volumes" after upgrading HA_VERSION to force a fresh install.
+    // Mounted directly under $HOME (not ~/.local/ha-venv) so Docker does NOT create ~/.local as root,
+    // which would race with VS Code server trying to write ~/.cache/Microsoft at container start.
+    // Ownership is fixed by onCreateCommand (Docker initializes volume mount points as root).
+    // Volume name uses ${localWorkspaceFolderBasename} so each project on the host gets its own volume.
+    "source=${localWorkspaceFolderBasename}_ha_venv,target=/home/vscode/ha-venv,type=volume",
+    // Named volume for uv package cache: avoids re-downloading packages when the venv is recreated (e.g. after HA upgrade).
+    // Mounted directly under $HOME (not ~/.cache/uv) so Docker does NOT create ~/.cache as root,
+    // which would cause EACCES when VS Code server tries to mkdir ~/.cache/Microsoft at startup.
+    // Ownership is fixed by onCreateCommand (Docker initializes volume mount points as root).
+    "source=${localWorkspaceFolderBasename}_uv_cache,target=/home/vscode/uv-cache,type=volume",
+    // Named volume for node_modules: keeps it on Container FS (not bind mount) for performance.
+    // Docker manages this volume separately from the workspace — npm ci runs fast on overlay FS.
+    "source=${localWorkspaceFolderBasename}_node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+    // Mount host gitconfig for local development (ignored in Codespaces)
+    // In Codespaces, GitHub automatically configures Git with your account
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/home/vscode/.gitconfig.host,type=bind,consistency=cached,readonly"
+  ],
+  "remoteUser": "vscode"
+}

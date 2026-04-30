@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Home Assistant Integration Icons (icons.json)",
+  "description": "JSON schema for the icons.json file in a Home Assistant integration. Supports defining icons for service actions (and optional collapsible sections) under the services key, and (legacy/custom) entity state icons under the entity key. See: https://developers.home-assistant.io/docs/dev_101_services/#icons",
+  "type": "object",
+  "properties": {
+    "services": {
+      "type": "object",
+      "description": "Service action icon definitions mapped by service action name.",
+      "additionalProperties": {
+        "type": "object",
+        "description": "Icon definition for a single service action.",
+        "properties": {
+          "service": {
+            "$ref": "#/definitions/icon",
+            "description": "Icon (mdi:) to represent the service action in UI editors."
+          },
+          "sections": {
+            "type": "object",
+            "description": "Optional mapping of collapsible section keys to icons.",
+            "additionalProperties": {
+              "$ref": "#/definitions/icon"
+            }
+          }
+        },
+        "required": ["service"],
+        "additionalProperties": false
+      }
+    },
+    "entity": {
+      "type": "object",
+      "description": "(Optional) Entity icon overrides by domain and translation_key (custom pattern used by some integrations). Each translation_key object can define state icon mappings.",
+      "additionalProperties": {
+        "type": "object",
+        "description": "Entity domain (e.g. sensor, switch).",
+        "additionalProperties": {
+          "type": "object",
+          "description": "Translation key for the entity (matches entity_description.translation_key).",
+          "properties": {
+            "state": {
+              "type": "object",
+              "description": "Mapping of raw state values to icons.",
+              "additionalProperties": {
+                "$ref": "#/definitions/icon"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "definitions": {
+    "icon": {
+      "type": "string",
+      "pattern": "^mdi:[a-z0-9-_]+$",
+      "description": "An MDI icon reference in the form mdi:icon-name. Lowercase letters, numbers, hyphen and underscore allowed."
+    }
+  },
+  "additionalProperties": false
+}

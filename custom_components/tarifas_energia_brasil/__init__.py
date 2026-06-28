@@ -2,62 +2,55 @@
 import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN, CONF_CONCESSIONARIA
+from .const import DOMAIN, CONF_CONCESSIONARIA, SERVICE_ATUALIZAR
 from .database import DatabaseManager
-from .api import TarifasEnergiaAPI
+from .cloudflare_api import CloudflareAPI
 from .coordinator import TarifasEnergiaCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Define as plataformas que sua integração usará (neste caso, apenas sensor)
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "button"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Configura a integração a partir de uma entrada de configuração (via UI)."""
-    # Cria um dicionário central para a integração no Home Assistant
+    """Configura a integração a partir de uma entrada de configuração."""
     hass.data.setdefault(DOMAIN, {})
 
-    # 1. Obter a concessionária escolhida pelo usuário durante a configuração
     concessionaria_nome = entry.data[CONF_CONCESSIONARIA]
 
-    # 2. Inicializar o gerenciador do banco de dados
-    # O arquivo do banco de dados será salvo na pasta de configuração do HA
     db_path = hass.config.path(f"{DOMAIN}.sqlite")
     db_manager = DatabaseManager(hass, db_path)
-    await db_manager.async_setup_database() # Garante que as tabelas existam
+    await db_manager.async_setup_database()
 
-    # 3. Inicializar o cliente da API e o Coordenador
     session = async_get_clientsession(hass)
-    api_client = TarifasEnergiaAPI(hass, session, db_manager)
-    coordinator = TarifasEnergiaCoordinator(hass, api_client, concessionaria_nome)
+    api_client = CloudflareAPI(hass, session)
+    coordinator = TarifasEnergiaCoordinator(hass, api_client, db_manager, concessionaria_nome)
 
-    # 4. Pre-load do CSV de bandeiras antes da primeira consulta à API
-    await api_client.async_preload_latest_bandeira_csv()
-
-    # 5. Realizar a primeira busca de dados ao iniciar
     await coordinator.async_config_entry_first_refresh()
 
-    # 6. Armazenar o coordenador para que as plataformas (sensor) possam usá-lo
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    # 7. Encaminhar a configuração para as plataformas definidas
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Retorna True se tudo ocorreu bem
+    async def _handle_atualizar_tarifas(call: ServiceCall) -> None:
+        entry_id = call.data.get("entry_id", entry.entry_id)
+        coord: TarifasEnergiaCoordinator | None = hass.data[DOMAIN].get(entry_id)
+        if coord:
+            await coord.async_force_refresh_nocache()
+        else:
+            _LOGGER.warning("Serviço atualizar_tarifas: entry_id '%s' não encontrado.", entry_id)
+
+    hass.services.async_register(DOMAIN, SERVICE_ATUALIZAR, _handle_atualizar_tarifas)
+
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Descarrega uma entrada de configuração (quando o usuário remove a integração)."""
-    # Descarrega as plataformas associadas a esta entrada
+    """Descarrega uma entrada de configuração."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-
-    # Se o descarregamento foi bem-sucedido, remove os dados da integração
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
-
     return unload_ok

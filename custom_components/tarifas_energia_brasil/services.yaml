@@ -1,0 +1,15 @@
+atualizar_tarifas:
+  name: Atualizar Tarifas
+  description: >
+    Força uma requisição à API Cloudflare com nocache=true, ignorando o cache
+    do worker e buscando os dados mais recentes diretamente da fonte.
+  fields:
+    entry_id:
+      name: Entry ID
+      description: >
+        ID da entrada de configuração da concessionária. Opcional: se omitido,
+        atualiza a concessionária da integração que chamou o serviço.
+      required: false
+      example: "abc123def456"
+      selector:
+        text:

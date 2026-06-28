@@ -1,6 +1,5 @@
 """Modelos de dados (ORM) para o banco de dados da integração."""
 from sqlalchemy import (
-    create_engine,
     Column,
     Integer,
     String,
@@ -19,7 +18,7 @@ class Concessionaria(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    
+
     historico_tarifas: Mapped[list["HistoricoTarifa"]] = relationship(
         "HistoricoTarifa", back_populates="concessionaria"
     )
@@ -29,7 +28,7 @@ class Concessionaria(Base):
 
 
 class BandeiraTarifaria(Base):
-    """Modelo para armazenar o histórico de bandeiras tarifárias por competência."""
+    """Histórico de bandeiras tarifárias (mantido para compatibilidade de schema)."""
     __tablename__ = "bandeiras_tarifarias"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -46,7 +45,7 @@ class BandeiraTarifaria(Base):
 
 
 class HistoricoTarifa(Base):
-    """Modelo para armazenar histórico das últimas leituras de tarifa por concessionária."""
+    """Histórico de leituras de tarifa por concessionária (cache local)."""
     __tablename__ = "historico_tarifas"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -55,6 +54,14 @@ class HistoricoTarifa(Base):
     dat_competencia: Mapped[Date] = mapped_column(Date, nullable=False)
     api_status: Mapped[str] = mapped_column(String(20), nullable=False, default="online")
     timestamp: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
+
+    # Campos adicionados na v1.2 (migração automática em database.py)
+    tarifa_base_te = Column(Float, nullable=True)
+    tarifa_base_tusd = Column(Float, nullable=True)
+    dat_inicio_vigencia = Column(String(20), nullable=True)
+    dat_fim_vigencia = Column(String(20), nullable=True)
+    dat_competencia_bandeira = Column(String(20), nullable=True)
+    valor_adicional_bandeira = Column(Float, nullable=True)
 
     concessionaria_id: Mapped[int] = mapped_column(ForeignKey("concessionarias.id"), nullable=False)
     concessionaria: Mapped["Concessionaria"] = relationship("Concessionaria", back_populates="historico_tarifas")

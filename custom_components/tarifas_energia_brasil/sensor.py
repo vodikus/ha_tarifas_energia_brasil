@@ -1,5 +1,6 @@
 """Define as entidades de sensor para a integração Tarifas de Energia Brasil."""
 import logging
+from datetime import date
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -28,7 +29,8 @@ async def async_setup_entry(
         TarifaVigenteSensor(coordinator, entry),
         BandeiraVigenteSensor(coordinator, entry),
         DataCompetenciaBandeiraSensor(coordinator, entry),
-        DataCompetenciaTarifaSensor(coordinator, entry),
+        DataInicioCompetenciaSensor(coordinator, entry),
+        DataFimCompetenciaSensor(coordinator, entry),
         UltimaAtualizacaoSensor(coordinator, entry),
     ]
 
@@ -39,14 +41,12 @@ class TarifasEnergiaBaseSensor(CoordinatorEntity[TarifasEnergiaCoordinator], Sen
     """Classe base para os sensores da integração."""
 
     def __init__(self, coordinator: TarifasEnergiaCoordinator, entry: ConfigEntry):
-        """Inicializa o sensor base, recebendo a ConfigEntry."""
         super().__init__(coordinator)
         self.entry = entry
         self._attr_has_entity_name = True
 
     @property
     def device_info(self):
-        """Retorna as informações do dispositivo, usando o entry_id como identificador."""
         concessionaria_nome = self.entry.data[CONF_CONCESSIONARIA]
         return {
             "identifiers": {(DOMAIN, self.entry.entry_id)},
@@ -75,6 +75,18 @@ class TarifaVigenteSensor(TarifasEnergiaBaseSensor):
             return self.coordinator.data.get("tarifa_vigente")
         return None
 
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        if not self.coordinator.data:
+            return None
+        d = self.coordinator.data
+        return {
+            "tarifa_base_te": d.get("tarifa_base_te"),
+            "tarifa_base_tusd": d.get("tarifa_base_tusd"),
+            "valor_adicional_bandeira": d.get("valor_adicional_bandeira"),
+            "api_status": d.get("api_status"),
+        }
+
 
 class BandeiraVigenteSensor(TarifasEnergiaBaseSensor):
     """Sensor que representa qual bandeira tarifária está vigente."""
@@ -94,7 +106,7 @@ class BandeiraVigenteSensor(TarifasEnergiaBaseSensor):
 
 
 class DataCompetenciaBandeiraSensor(TarifasEnergiaBaseSensor):
-    """Sensor que exibe a data de competência da bandeira tarifária (tabela bandeiras_tarifarias)."""
+    """Sensor que exibe a data de competência da bandeira tarifária."""
 
     _attr_name = "Data Competência Bandeira"
     _attr_device_class = SensorDeviceClass.DATE
@@ -111,30 +123,48 @@ class DataCompetenciaBandeiraSensor(TarifasEnergiaBaseSensor):
         return None
 
 
-class DataCompetenciaTarifaSensor(TarifasEnergiaBaseSensor):
-    """Sensor que exibe a data de competência da tarifa vigente (tabela historico_tarifas)."""
+class DataInicioCompetenciaSensor(TarifasEnergiaBaseSensor):
+    """Sensor que exibe a data de início da vigência da tarifa."""
 
-    _attr_name = "Data Competência Tarifa"
+    _attr_name = "Data Início Vigência"
     _attr_device_class = SensorDeviceClass.DATE
-    _attr_icon = "mdi:calendar-check"
+    _attr_icon = "mdi:calendar-arrow-right"
 
     def __init__(self, coordinator: TarifasEnergiaCoordinator, entry: ConfigEntry):
         super().__init__(coordinator, entry)
-        self._attr_unique_id = f"{self.entry.entry_id}_dat_competencia_tarifa"
+        self._attr_unique_id = f"{self.entry.entry_id}_dat_inicio_vigencia"
 
     @property
-    def native_value(self):
+    def native_value(self) -> date | None:
         if self.coordinator.data:
-            val = self.coordinator.data.get("dat_competencia_tarifa")
+            val = self.coordinator.data.get("dat_inicio_vigencia")
             if isinstance(val, str):
-                from datetime import date
                 return date.fromisoformat(val[:10])
-            return val
+        return None
+
+
+class DataFimCompetenciaSensor(TarifasEnergiaBaseSensor):
+    """Sensor que exibe a data de fim da vigência da tarifa."""
+
+    _attr_name = "Data Fim Vigência"
+    _attr_device_class = SensorDeviceClass.DATE
+    _attr_icon = "mdi:calendar-arrow-left"
+
+    def __init__(self, coordinator: TarifasEnergiaCoordinator, entry: ConfigEntry):
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{self.entry.entry_id}_dat_fim_vigencia"
+
+    @property
+    def native_value(self) -> date | None:
+        if self.coordinator.data:
+            val = self.coordinator.data.get("dat_fim_vigencia")
+            if isinstance(val, str):
+                return date.fromisoformat(val[:10])
         return None
 
 
 class UltimaAtualizacaoSensor(TarifasEnergiaBaseSensor):
-    """Sensor que exibe o timestamp da última atualização salva."""
+    """Sensor que exibe o timestamp da última atualização."""
 
     _attr_name = "Última Atualização"
     _attr_icon = "mdi:calendar-clock"
@@ -148,4 +178,3 @@ class UltimaAtualizacaoSensor(TarifasEnergiaBaseSensor):
         if self.coordinator.data:
             return self.coordinator.data.get("timestamp")
         return None
-

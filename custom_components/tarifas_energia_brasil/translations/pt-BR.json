@@ -1,0 +1,61 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Tarifas de Energia Brasil",
+        "data": {
+          "concessionaria": "Concessionária"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Não foi possível consultar a lista de concessionárias.",
+      "no_concessionarias": "Nenhuma concessionária disponível."
+    },
+    "abort": {
+      "already_configured": "Esta concessionária já está configurada."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Frequência de atualização",
+        "description": "Escolha como a integração consulta a API. 'Automático' mantém o comportamento anterior, baseado no fim da vigência da tarifa.",
+        "data": {
+          "polling_mode": "Modo de atualização"
+        }
+      }
+    }
+  },
+  "selector": {
+    "polling_mode": {
+      "options": {
+        "automatic": "Automático",
+        "daily": "Diário",
+        "every_2_days": "A cada 2 dias",
+        "weekly": "Semanal"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status_atualizacao": {
+        "state": {
+          "online": "Consulta bem-sucedida",
+          "cache": "Usando valor salvo",
+          "sem_dados": "Sem dado válido"
+        }
+      },
+      "atualidade_dados": {
+        "state": {
+          "atual": "Vigência e competência atuais",
+          "tarifa_expirada": "Tarifa vencida",
+          "tarifa_futura": "Tarifa ainda não vigente",
+          "bandeira_desatualizada": "Bandeira de outra competência",
+          "dados_incompletos": "Dados incompletos",
+          "sem_dados": "Sem dado válido"
+        }
+      }
+    }
+  }
+}

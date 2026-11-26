@@ -1,15 +1,35 @@
 """DataUpdateCoordinator para a integração Tarifas de Energia Brasil."""
+
 import logging
+import math
 from datetime import timedelta, date
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 
 from .cloudflare_api import CloudflareAPI
 from .database import DatabaseManager
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    POLLING_AUTOMATIC,
+    POLLING_FIXED_DAYS,
+    STATUS_CACHE,
+    STATUS_ONLINE,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _validate_price(price: object) -> None:
+    """Rejeita preços inválidos tanto da API quanto de snapshots legados."""
+    if (
+        isinstance(price, bool)
+        or not isinstance(price, (int, float))
+        or not math.isfinite(price)
+        or price <= 0
+    ):
+        raise ValueError("Tarifa deve ser numérica, finita e positiva")
 
 
 class TarifasEnergiaCoordinator(DataUpdateCoordinator):
@@ -21,23 +41,37 @@ class TarifasEnergiaCoordinator(DataUpdateCoordinator):
         api: CloudflareAPI,
         db: DatabaseManager,
         concessionaria: str,
+        polling_mode: str = POLLING_AUTOMATIC,
     ):
         self.api = api
         self.db = db
         self.concessionaria = concessionaria
+        self.polling_mode = (
+            polling_mode
+            if polling_mode == POLLING_AUTOMATIC or polling_mode in POLLING_FIXED_DAYS
+            else POLLING_AUTOMATIC
+        )
         self._nocache_flag = False
+        # Diagnóstico em memória (horário local tz-aware do HA). None = ainda não ocorreu.
+        self.last_attempt = None
+        self.last_success = None
+        self.last_error: str | None = None
+        initial_days = POLLING_FIXED_DAYS.get(polling_mode, 1)
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(days=1),
+            update_interval=timedelta(days=initial_days),
         )
 
     async def _async_update_data(self) -> dict:
         """Busca dados da API ou retorna do cache local em caso de falha."""
         nocache = self._nocache_flag
+        self.last_attempt = dt_util.now()
         try:
-            raw = await self.api.async_fetch_tarifas(self.concessionaria, nocache=nocache)
+            raw = await self.api.async_fetch_tarifas(
+                self.concessionaria, nocache=nocache
+            )
             data = self._parse_api_response(raw)
 
             dat_competencia = date.fromisoformat(data["dat_inicio_vigencia"])
@@ -51,7 +85,11 @@ class TarifasEnergiaCoordinator(DataUpdateCoordinator):
                 tarifa_base_tusd=data.get("tarifa_base_tusd"),
                 dat_inicio_vigencia=data.get("dat_inicio_vigencia"),
                 dat_fim_vigencia=data.get("dat_fim_vigencia"),
-                dat_competencia_bandeira=data.get("dat_competencia_bandeira"),
+                dat_competencia_bandeira=(
+                    data["dat_competencia_bandeira"].isoformat()
+                    if data.get("dat_competencia_bandeira")
+                    else None
+                ),
                 valor_adicional_bandeira=data.get("valor_adicional_bandeira"),
             )
 
@@ -62,15 +100,32 @@ class TarifasEnergiaCoordinator(DataUpdateCoordinator):
                 data["tarifa_vigente"],
                 " (nocache)" if nocache else "",
             )
-            self.update_interval = self._compute_update_interval(data.get("dat_fim_vigencia"))
-            return {**data, "api_status": "online"}
+            self._apply_polling_interval(data.get("dat_fim_vigencia"))
+            self.last_success = dt_util.now()
+            self.last_error = None
+            return {
+                **data,
+                "api_status": STATUS_ONLINE,
+                "data_status": STATUS_ONLINE,
+                "last_success": self.last_success,
+            }
 
         except Exception as err:
+            self.last_error = type(err).__name__
             _LOGGER.error("Erro ao buscar dados da API: %s. Tentando cache local.", err)
             cached = await self.db.async_get_latest_tarifa_snapshot(self.concessionaria)
             if cached:
-                _LOGGER.warning("Retornando dados do cache local para '%s'.", self.concessionaria)
-                self.update_interval = self._compute_update_interval(cached.get("dat_fim_vigencia"))
+                try:
+                    _validate_price(cached.get("tarifa_vigente"))
+                except ValueError as cache_error:
+                    self.last_error = "invalid_cache_price"
+                    raise UpdateFailed(
+                        "Cache legado contém tarifa inválida"
+                    ) from cache_error
+                _LOGGER.warning(
+                    "Retornando dados do cache local para '%s'.", self.concessionaria
+                )
+                self._apply_polling_interval(cached.get("dat_fim_vigencia"))
                 dat_comp_bandeira = cached.get("dat_competencia_bandeira")
                 return {
                     "bandeira_vigente": cached["bandeira_vigente"],
@@ -78,24 +133,38 @@ class TarifasEnergiaCoordinator(DataUpdateCoordinator):
                     "tarifa_base_te": cached.get("tarifa_base_te"),
                     "tarifa_base_tusd": cached.get("tarifa_base_tusd"),
                     "dat_competencia_bandeira": (
-                        date.fromisoformat(dat_comp_bandeira) if dat_comp_bandeira else None
+                        date.fromisoformat(dat_comp_bandeira)
+                        if dat_comp_bandeira
+                        else None
                     ),
                     "dat_competencia_tarifa": cached.get("dat_competencia"),
                     "dat_inicio_vigencia": cached.get("dat_inicio_vigencia"),
                     "dat_fim_vigencia": cached.get("dat_fim_vigencia"),
                     "valor_adicional_bandeira": cached.get("valor_adicional_bandeira"),
                     "api_status": "offline",
+                    "data_status": STATUS_CACHE,
                     "timestamp": cached["timestamp"],
+                    # Cache não é prova de sucesso atual: last_success fica sem valor.
+                    "last_success": None,
                 }
-            raise UpdateFailed(f"Sem dados disponíveis para '{self.concessionaria}': {err}") from err
+            raise UpdateFailed(
+                f"Sem dados disponíveis para '{self.concessionaria}': {err}"
+            ) from err
+
+    def _apply_polling_interval(self, dat_fim_vigencia_str: str | None) -> None:
+        """Aplica o intervalo conforme o modo escolhido nas opções da entrada."""
+        if self.polling_mode == POLLING_AUTOMATIC:
+            self.update_interval = self._compute_update_interval(dat_fim_vigencia_str)
+        else:
+            self.update_interval = timedelta(days=POLLING_FIXED_DAYS[self.polling_mode])
 
     def _compute_update_interval(self, dat_fim_vigencia_str: str | None) -> timedelta:
-        """Retorna intervalo de polling baseado em dat_fim_vigencia."""
+        """Retorna intervalo de polling baseado em dat_fim_vigencia (modo automático)."""
         if dat_fim_vigencia_str is None:
             return timedelta(days=1)
         try:
             dat_fim = date.fromisoformat(dat_fim_vigencia_str[:10])
-            if dat_fim <= date.today():
+            if dat_fim <= dt_util.now().date():
                 return timedelta(days=1)
             return timedelta(weeks=1)
         except (ValueError, TypeError):
@@ -114,9 +183,18 @@ class TarifasEnergiaCoordinator(DataUpdateCoordinator):
         """Mapeia a resposta da API Cloudflare para o dict interno do coordinator."""
         bandeira = raw.get("bandeira_tarifaria", {})
         tarifa = raw.get("tarifa", {})
+        # Uma resposta HTTP não é uma leitura válida se não há preço/identidade temporal.
+        _validate_price(tarifa.get("tarifa_vigente"))
+        if not (tarifa.get("bandeira_vigente") or bandeira.get("nome_bandeira")):
+            raise ValueError("Bandeira ausente na resposta")
+        inicio = date.fromisoformat(tarifa["dat_inicio_vigencia"])
+        fim = date.fromisoformat(tarifa["dat_fim_vigencia"])
+        if fim < inicio:
+            raise ValueError("Vigência inválida na resposta")
         dat_comp_bandeira = bandeira.get("data_competencia")
         return {
-            "bandeira_vigente": tarifa.get("bandeira_vigente") or bandeira.get("nome_bandeira"),
+            "bandeira_vigente": tarifa.get("bandeira_vigente")
+            or bandeira.get("nome_bandeira"),
             "tarifa_vigente": tarifa.get("tarifa_vigente"),
             "tarifa_base_te": tarifa.get("tarifa_base_te"),
             "tarifa_base_tusd": tarifa.get("tarifa_base_tusd"),

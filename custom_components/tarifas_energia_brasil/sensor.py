@@ -1,7 +1,7 @@
 """Define as entidades de sensor para a integração Tarifas de Energia Brasil."""
 
 import logging
-from datetime import date
+from datetime import date, datetime
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -9,8 +9,9 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
@@ -212,7 +213,24 @@ class DiagnosticoBaseSensor(TarifasEnergiaBaseSensor):
         return True
 
 
-class StatusAtualizacaoSensor(DiagnosticoBaseSensor):
+class CalendarDiagnosticSensor(DiagnosticoBaseSensor):
+    """Republica diagnósticos de calendário sem buscar novos dados."""
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_track_time_change(
+                self.hass, self._async_midnight_update, hour=0, minute=0, second=0
+            )
+        )
+
+    @callback
+    def _async_midnight_update(self, now: datetime) -> None:
+        """Reavalia a data local, preservando horários de consulta/sucesso."""
+        self.async_write_ha_state()
+
+
+class StatusAtualizacaoSensor(CalendarDiagnosticSensor):
     """Estado da última atualização: online, cache ou sem dados válidos."""
 
     _attr_name = "Status da Atualização"
@@ -283,7 +301,7 @@ class UltimaConsultaSucessoSensor(DiagnosticoBaseSensor):
         return self.coordinator.last_success
 
 
-class AtualidadeDadosSensor(DiagnosticoBaseSensor):
+class AtualidadeDadosSensor(CalendarDiagnosticSensor):
     """Separa a atualidade do conteúdo da conectividade com o intermediário."""
 
     _attr_name = "Atualidade dos Dados"

@@ -74,6 +74,8 @@ Salvar as opções recarrega somente a entrada e reprograma a consulta, sem rein
 - **Última Consulta com Sucesso:** horário da última resposta válida, mesmo sem mudança de preço. Não avança ao usar cópia local. Estes dois horários são mantidos em memória por carga da entrada; antes de uma consulta bem-sucedida, o horário de sucesso é desconhecido.
 - **Última Atualização** (sensor existente): mantém o timestamp bruto fornecido pelo serviço; na cópia local, representa o horário de gravação do registro. Como a origem não declara offset, não é reinterpretado como horário local. Não o confunda com a hora de consulta.
 
+A atualidade e o atributo `vigencia_expirada` são reavaliados à meia-noite no fuso do Home Assistant, mesmo no modo semanal, sem consultar a API nem avançar os horários de tentativa/sucesso. Os listeners de calendário são removidos quando a entrada é descarregada.
+
 Os diagnósticos ficam na categoria **Diagnóstico** do dispositivo, mas estão habilitados e podem ser usados em cartões. Não é necessário excluir e recriar a entrada: os identificadores originais dos seis sensores e do botão são mantidos. Registros legados que não são mais publicados não são removidos automaticamente.
 
 A tarifa mantém a unidade `R$/kWh`, mas deixa de declarar classe monetária, que é destinada a valores em moeda, não a taxas por energia. As referências existentes no painel de Energia permanecem válidas. A troca de versão não recalcula custos históricos nem torna a tarifa homologada equivalente ao total da fatura com tributos e compensações.
@@ -82,7 +84,7 @@ A tarifa mantém a unidade `R$/kWh`, mas deixa de declarar classe monetária, qu
 
 - A integração depende do serviço intermediário e da publicação dos dados oficiais.
 - Em falha temporária, a última leitura local é preservada e identificada como cópia; ela não é uma nova confirmação. Sem cópia na primeira configuração, a entrada permanece em tentativa de configuração. Após uma carga bem-sucedida, os diagnósticos continuam visíveis nas falhas.
-- O cache acompanha a mudança de bandeira dentro da mesma vigência da tarifa-base, sem criar uma linha por consulta.
+- O cache acompanha a mudança de bandeira dentro da mesma vigência da tarifa-base, sem criar uma linha por consulta. Preços de cache legados também precisam ser numéricos, finitos e positivos: um snapshot inválido não é publicado como preço. Preço válido com metadados antigos ausentes continua disponível, com atualidade `dados_incompletos`.
 - Não há alertas automáticos nem coleta direta da ANEEL nesta alteração.
 - Os valores exibidos são apenas informativos e podem variar conforme a distribuidora.
 

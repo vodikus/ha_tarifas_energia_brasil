@@ -21,6 +21,17 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def _validate_price(price: object) -> None:
+    """Rejeita preços inválidos tanto da API quanto de snapshots legados."""
+    if (
+        isinstance(price, bool)
+        or not isinstance(price, (int, float))
+        or not math.isfinite(price)
+        or price <= 0
+    ):
+        raise ValueError("Tarifa deve ser numérica, finita e positiva")
+
+
 class TarifasEnergiaCoordinator(DataUpdateCoordinator):
     """Coordenador que busca dados do Cloudflare Worker e mantém cache local."""
 
@@ -104,6 +115,13 @@ class TarifasEnergiaCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Erro ao buscar dados da API: %s. Tentando cache local.", err)
             cached = await self.db.async_get_latest_tarifa_snapshot(self.concessionaria)
             if cached:
+                try:
+                    _validate_price(cached.get("tarifa_vigente"))
+                except ValueError as cache_error:
+                    self.last_error = "invalid_cache_price"
+                    raise UpdateFailed(
+                        "Cache legado contém tarifa inválida"
+                    ) from cache_error
                 _LOGGER.warning(
                     "Retornando dados do cache local para '%s'.", self.concessionaria
                 )
@@ -166,14 +184,7 @@ class TarifasEnergiaCoordinator(DataUpdateCoordinator):
         bandeira = raw.get("bandeira_tarifaria", {})
         tarifa = raw.get("tarifa", {})
         # Uma resposta HTTP não é uma leitura válida se não há preço/identidade temporal.
-        price = tarifa.get("tarifa_vigente")
-        if (
-            isinstance(price, bool)
-            or not isinstance(price, (int, float))
-            or not math.isfinite(price)
-            or price <= 0
-        ):
-            raise ValueError("Tarifa inválida na resposta")
+        _validate_price(tarifa.get("tarifa_vigente"))
         if not (tarifa.get("bandeira_vigente") or bandeira.get("nome_bandeira")):
             raise ValueError("Bandeira ausente na resposta")
         inicio = date.fromisoformat(tarifa["dat_inicio_vigencia"])

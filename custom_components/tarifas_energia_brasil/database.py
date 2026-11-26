@@ -1,4 +1,5 @@
 """Módulo para gerenciar a interação com o banco de dados SQLite via SQLAlchemy."""
+
 import logging
 from datetime import date, datetime
 from sqlalchemy import create_engine, select, text
@@ -43,14 +44,22 @@ class DatabaseManager:
 
             # Migração legada: dat_competencia
             if "dat_competencia" not in colunas:
-                conn.execute(text("ALTER TABLE historico_tarifas ADD COLUMN dat_competencia DATE"))
+                conn.execute(
+                    text(
+                        "ALTER TABLE historico_tarifas ADD COLUMN dat_competencia DATE"
+                    )
+                )
                 conn.commit()
                 _LOGGER.info("Migração: coluna 'dat_competencia' adicionada.")
 
             # Novas colunas da v1.2 (API Cloudflare)
             for col_name, col_type in _NEW_COLUMNS:
                 if col_name not in colunas:
-                    conn.execute(text(f"ALTER TABLE historico_tarifas ADD COLUMN {col_name} {col_type}"))
+                    conn.execute(
+                        text(
+                            f"ALTER TABLE historico_tarifas ADD COLUMN {col_name} {col_type}"
+                        )
+                    )
                     conn.commit()
                     _LOGGER.info("Migração: coluna '%s' adicionada.", col_name)
 
@@ -68,9 +77,11 @@ class DatabaseManager:
         dat_competencia_bandeira: str | None = None,
         valor_adicional_bandeira: float | None = None,
     ) -> dict:
-        """Insere no histórico apenas se dat_competencia for mais recente que o último registro."""
+        """Atualiza o cache da vigência existente ou insere uma nova vigência."""
         with self.session_factory() as session:
-            stmt = select(Concessionaria).where(Concessionaria.nome == concessionaria_nome)
+            stmt = select(Concessionaria).where(
+                Concessionaria.nome == concessionaria_nome
+            )
             concessionaria = session.execute(stmt).scalar_one_or_none()
 
             if not concessionaria:
@@ -99,6 +110,20 @@ class DatabaseManager:
                     .limit(1)
                 )
                 snapshot = session.execute(existing_stmt).scalar_one()
+                # A bandeira muda mensalmente dentro da mesma vigência anual.
+                # O cache deve refletir a última resposta, não só a primeira do ano.
+                if dat_competencia == ultima_competencia:
+                    snapshot.bandeira_vigente = bandeira_vigente
+                    snapshot.tarifa_vigente = tarifa_vigente
+                    snapshot.api_status = api_status
+                    snapshot.timestamp = datetime.now()
+                    snapshot.tarifa_base_te = tarifa_base_te
+                    snapshot.tarifa_base_tusd = tarifa_base_tusd
+                    snapshot.dat_inicio_vigencia = dat_inicio_vigencia
+                    snapshot.dat_fim_vigencia = dat_fim_vigencia
+                    snapshot.dat_competencia_bandeira = dat_competencia_bandeira
+                    snapshot.valor_adicional_bandeira = valor_adicional_bandeira
+                    session.commit()
             else:
                 snapshot = HistoricoTarifa(
                     concessionaria_id=concessionaria.id,
@@ -124,12 +149,17 @@ class DatabaseManager:
 
             return self._snapshot_to_dict(snapshot)
 
-    async def async_get_latest_tarifa_snapshot(self, concessionaria_nome: str) -> dict | None:
+    async def async_get_latest_tarifa_snapshot(
+        self, concessionaria_nome: str
+    ) -> dict | None:
         """Retorna a leitura de tarifa mais recente para uma concessionária."""
         with self.session_factory() as session:
             stmt = (
                 select(HistoricoTarifa)
-                .join(Concessionaria, HistoricoTarifa.concessionaria_id == Concessionaria.id)
+                .join(
+                    Concessionaria,
+                    HistoricoTarifa.concessionaria_id == Concessionaria.id,
+                )
                 .where(Concessionaria.nome == concessionaria_nome)
                 .order_by(HistoricoTarifa.timestamp.desc())
                 .limit(1)
@@ -141,7 +171,9 @@ class DatabaseManager:
         return {
             "bandeira_vigente": snapshot.bandeira_vigente,
             "tarifa_vigente": snapshot.tarifa_vigente,
-            "dat_competencia": snapshot.dat_competencia.isoformat() if snapshot.dat_competencia else None,
+            "dat_competencia": snapshot.dat_competencia.isoformat()
+            if snapshot.dat_competencia
+            else None,
             "api_status": snapshot.api_status,
             "timestamp": snapshot.timestamp.isoformat(),
             "tarifa_base_te": snapshot.tarifa_base_te,

@@ -9,4 +9,7 @@ config
 node_modules
 .venv
 custom_components/hacs
-.github
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/tests.yml

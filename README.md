@@ -1,12 +1,13 @@
 # Tarifas de Energia Brasil - Integração para Home Assistant
 
-Esta integração permite consultar e monitorar as tarifas de energia elétrica vigentes no Brasil, incluindo bandeiras tarifárias, diretamente no Home Assistant. Os dados são obtidos da ANEEL e atualizados automaticamente.
+Esta integração permite consultar e monitorar as tarifas de energia elétrica vigentes no Brasil, incluindo bandeiras tarifárias, diretamente no Home Assistant. Os valores oficiais da ANEEL são fornecidos por um serviço intermediário (Cloudflare Worker). A integração consulta esse serviço e mantém uma cópia local para falhas temporárias; ela não consulta a ANEEL diretamente.
 
 ## Funcionalidades
 
 - Consulta automática das tarifas de energia e bandeiras tarifárias.
 - Sensores para exibir a tarifa vigente e a bandeira atual.
-- Atualização diária dos dados.
+- Frequência configurável por concessionária: Automático, Diário, A cada 2 dias ou Semanal.
+- Diagnósticos de consulta, vigência/competência e horários de tentativa e sucesso.
 - Armazenamento local dos dados para histórico.
 - Configuração simples via interface do Home Assistant.
 
@@ -54,12 +55,35 @@ A configuração é feita via UI (Configurações > Integrações > Adicionar in
 
 ## Atualização dos Dados
 
-Os dados são atualizados automaticamente uma vez por dia. O intervalo pode ser ajustado no código, se necessário.
+Em **Configurações → Dispositivos e serviços → Tarifas de Energia Brasil → Configurar**, escolha a frequência de cada entrada:
+
+| Modo | Intervalo |
+|---|---|
+| Automático (padrão preservado) | 7 dias enquanto a tarifa-base estiver vigente; 1 dia se vencer ou faltar uma data válida |
+| Diário | 24 horas |
+| A cada 2 dias | 48 horas |
+| Semanal | 7 dias |
+
+Salvar as opções recarrega somente a entrada e reprograma a consulta, sem reiniciar o Core. O intervalo é contado a partir da carga/consulta, não é um horário fixo do dia. A recarga faz uma leitura inicial. As consultas programadas usam o cache normal do serviço; o botão **Atualizar Tarifas** continua solicitando atualização sem o cache do intermediário.
+
+### Diagnósticos
+
+- **Status da Atualização:** `online` (consulta bem-sucedida ao intermediário), `cache` (usando a cópia local) ou `sem_dados`. Os rótulos em português são traduzidos na interface.
+- **Atualidade dos Dados:** informa se a tarifa está vigente e a bandeira pertence ao mês atual no fuso configurado no HA. Expiração, início futuro, competência divergente e dados incompletos são estados distintos. Uma consulta online pode trazer conteúdo antigo: o sucesso de conexão não é confirmação da competência.
+- **Última Consulta:** horário da última tentativa local, com fuso.
+- **Última Consulta com Sucesso:** horário da última resposta válida, mesmo sem mudança de preço. Não avança ao usar cópia local. Estes dois horários são mantidos em memória por carga da entrada; antes de uma consulta bem-sucedida, o horário de sucesso é desconhecido.
+- **Última Atualização** (sensor existente): mantém o timestamp bruto fornecido pelo serviço; na cópia local, representa o horário de gravação do registro. Como a origem não declara offset, não é reinterpretado como horário local. Não o confunda com a hora de consulta.
+
+Os diagnósticos ficam na categoria **Diagnóstico** do dispositivo, mas estão habilitados e podem ser usados em cartões. Não é necessário excluir e recriar a entrada: os identificadores originais dos seis sensores e do botão são mantidos. Registros legados que não são mais publicados não são removidos automaticamente.
+
+A tarifa mantém a unidade `R$/kWh`, mas deixa de declarar classe monetária, que é destinada a valores em moeda, não a taxas por energia. As referências existentes no painel de Energia permanecem válidas. A troca de versão não recalcula custos históricos nem torna a tarifa homologada equivalente ao total da fatura com tributos e compensações.
 
 ## Pontos de Atenção
 
-- A integração depende da disponibilidade da API da ANEEL.
-- Em caso de falha na atualização, os sensores podem ficar indisponíveis.
+- A integração depende do serviço intermediário e da publicação dos dados oficiais.
+- Em falha temporária, a última leitura local é preservada e identificada como cópia; ela não é uma nova confirmação. Sem cópia na primeira configuração, a entrada permanece em tentativa de configuração. Após uma carga bem-sucedida, os diagnósticos continuam visíveis nas falhas.
+- O cache acompanha a mudança de bandeira dentro da mesma vigência da tarifa-base, sem criar uma linha por consulta.
+- Não há alertas automáticos nem coleta direta da ANEEL nesta alteração.
 - Os valores exibidos são apenas informativos e podem variar conforme a distribuidora.
 
 ## Contribuição
